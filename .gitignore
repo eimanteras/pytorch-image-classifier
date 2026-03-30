@@ -1,0 +1,28 @@
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+.venv/
+venv/
+
+# Dataset and local artifacts
+data/
+fiftyone/
+
+# Training outputs
+best_model.pth
+*.pt
+*.pth
+training_history.png
+confusion_matrix.png
+augmentation_preview.png
+
+# Environment and editor files
+.env
+.env.*
+.vscode/
+
+# OS files
+Thumbs.db
+.DS_Store

@@ -1,0 +1,7 @@
+fiftyone
+scikit-learn
+matplotlib
+seaborn
+tqdm
+numpy
+pillow
