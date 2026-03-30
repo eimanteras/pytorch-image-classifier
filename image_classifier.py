@@ -16,9 +16,13 @@ Architektūra:
     precision, recall, F1
 
 Paleidimas:
-    python -m pip install torch torchvision fiftyone scikit-learn
-                                                matplotlib seaborn tqdm numpy pillow
-  python image_classifier.py
+    Windows (rekomenduojama):
+        py -3.12 -m pip install torch torchvision fiftyone scikit-learn matplotlib seaborn tqdm numpy pillow
+        py -3.12 image_classifier.py
+
+    Linux/macOS:
+        python3 -m pip install torch torchvision fiftyone scikit-learn matplotlib seaborn tqdm numpy pillow
+        python3 image_classifier.py
 =============================================================
 """
 

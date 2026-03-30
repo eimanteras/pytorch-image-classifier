@@ -61,14 +61,24 @@ py -3.12 -m venv .venv
 .venv\Scripts\activate
 
 # 2A. CPU variantas
-python -m pip install -r requirements.txt
+.venv\Scripts\python.exe -m pip install -r requirements.txt
 
 # 2B. GPU variantas (NVIDIA)
-python -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cu126
-python -m pip install -r requirements.txt
+.venv\Scripts\python.exe -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cu126
+.venv\Scripts\python.exe -m pip install -r requirements.txt
 
 # 3. Paleisti
-python image_classifier.py
+.venv\Scripts\python.exe image_classifier.py
+```
+
+### Viena komanda (Windows PowerShell)
+
+```powershell
+# CPU
+.\run_image_classifier.ps1
+
+# GPU (NVIDIA)
+.\run_image_classifier.ps1 -Gpu
 ```
 
 Duomenys atsisiunčiami automatiškai iš OpenImages V6.
