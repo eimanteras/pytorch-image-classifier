@@ -477,3 +477,97 @@ Trumpas gynimo akcentas:
 ### Kodel validacijos dalis paimama is train?
 - Kad turetum nepriklausoma rinkini hiperparametru kontrolei, nelieciant test rinkinio.
 
+---
+
+## 9. Ultra gynimo versija: 30s, 2 min, 5 min
+
+Naudok sita skyriu kaip greita sablona. Priklausomai nuo klausimo gylio, renkiesi atsakymo ilgi.
+
+## 9.1. Kodel pasirinktas ResNet-18?
+
+### 30s atsakymas
+ResNet-18 pasirinktas del gero greicio ir tikslumo balanso. 3 klasiu uzdaviniui jis pakankamai galingas, bet kartu lengvas treniruoti. Su transfer learning gaunu stipru starta net su ribotu duomenu kiekiu.
+
+### 2 min atsakymas
+ResNet-18 turi residual blokus, kurie padeda stabiliau mokyti gilesnius tinklus. Mano atveju uzduotis nera labai didele, todel nereikia sunkesnio modelio kaip ResNet-50. ResNet-18 duoda praktiska kompromisa: pakankama reprezentacine galia ir greitesnis mokymas. Naudojant ImageNet svorius gaunu jau ismoktus zemesnio ir vidutinio lygio vizualinius bruozus, todel nereikia mokyti visko nuo nulio. Del to geriau generalizuoja ir maziau persimoko su nedideliu dataset.
+
+### 5 min atsakymas
+Architekturos pasirinkimas yra kompromisas tarp modelio talpos, mokymo laiko ir duomenu kiekio. ResNet-18 turi residual jungtis, kurios leidzia tinklui mokytis stabiliau ir perduoti gradienta per gilesnius sluoksnius. Mano uzdavinyje yra 3 klases, todel nereikia labai dideles talpos, kuri keltu overfitting rizika. ResNet-18 backbone, ypac su ImageNet pretrainingu, jau turi universalius filtrus (krastai, teksturos, formu kombinacijos), tad uztenka pritaikyti klasifikatoriaus galva. Praktiskai tai duoda: mazesni mokomu parametru skaiciu, greitesni eksperimento cikla ir stabilius rezultatus ant vidutinio dydzio rinkinio. Jeigu tureciau gerokai daugiau duomenu ir laiko, galeciau testuoti didesnius modelius, bet siam darbui ResNet-18 yra racionalus ir pagrindziamas pasirinkimas.
+
+## 9.2. Kodel backbone uzsaldytas?
+
+### 30s atsakymas
+Backbone uzsaldytas, nes naudoju transfer learning. Is anksto ismokti ImageNet bruozai jau geri, tad mokau tik paskutini sluoksni i mano 3 klases. Taip greiciau, stabliau ir su mazesne overfitting rizika.
+
+### 2 min atsakymas
+Kai duomenu kiekis ribotas, pilnas fine-tuning daznai persimoko. Uzsaldydamas konvoliucinius sluoksnius isnaudoju bendrus bruozus, kuriuos modelis ismoko is ImageNet. Tada mokau tik klasifikatoriaus galva, kuri prisitaiko prie Cat/Dog/Car. Tai sumazina mokomu parametru skaiciu, pagreitina mokyma ir daznai pagerina generalizacija.
+
+### 5 min atsakymas
+Transfer learning turi dvi pagrindines strategijas: feature extraction ir full fine-tuning. Mano kode taikoma feature extraction: visi backbone parametrai uzsaldomi, o mokoma tik `model.fc` dalis. Tokia strategija tinkama, kai uzduotis artima bendram natural image domenui, o duomenu kiekis ne milziniskas. Uzsaldymas saugo nuo katastrofisko pretrainintu svoriu sugadinimo, sumazina GPU/CPU apkrova ir padaro mokyma stabilesni. Jei veliau butu poreikis spausti paskutinius procentus tikslumo, butu galima daryti dalini atitirpinima (pvz., tik paskutinius ResNet blokus), bet pradiniam atsiskaitymo scenarijui dabartinis variantas yra labai geras ir argumentuotas.
+
+## 9.3. Kodel augmentacija tik train rinkiniui?
+
+### 30s atsakymas
+Nes train metu augmentacija didina duomenu ivairove ir padeda generalizacijai, o testas turi likti stabilus ir palyginamas. Teste noriu matuoti modeli, o ne atsitiktiniu transformaciju poveiki.
+
+### 2 min atsakymas
+Train augmentacija yra regularizacijos forma: modelis mato ivairesnes to paties objekto versijas ir tampa atsparesnis realioms salygoms. Testavimo metu augmentacijos nededu, kad rezultatas butu atkuriamas. Jei testui taikyciau atsitiktines transformacijas, metrikos svyruotu ir butu sunkiau objektyviai lyginti eksperimentus.
+
+### 5 min atsakymas
+Vertinimo protokole labai svarbu atskirti mokyma nuo matavimo. Mokymo fazeje augmentacija didina faktine pavyzdziu ivairove ir padeda modeliui mokytis invarianciju (mastelio, orientacijos, apsvietimo). Tuo tarpu testavimo fazeje tikslas yra ne mokyti, o ivertinti. Del to test pipeline turi buti deterministinis ir minimalus: resize, tensor, normalize. Tokiu budu metrikos atspindi realia modelio kokybe fiksuotose salygose ir tampa palyginamos tarp skirtingu paleidimu.
+
+## 9.4. Kodel metrikose naudojamas macro vidurkis?
+
+### 30s atsakymas
+Macro precision/recall/F1 kiekvienai klasei duoda vienoda svori. Taip viena gausesne klase neuzgozia kitu.
+
+### 2 min atsakymas
+Accuracy viena pati neparodo klasiu balanso, ypac jei viena klase dominuoja. Macro metrikos skaiciuoja kiekvienos klases rodikli atskirai ir tada ima paprasta vidurki. Taip gaunu teisingesni vaizda, kaip modelis tvarkosi su visomis trimis klasemis, o ne tik su gausiausia.
+
+### 5 min atsakymas
+Multi-class uzdavinyje skirtingos metrikos atsako i skirtingus klausimus. Accuracy rodo bendra teisingu atsakymu dali, bet gali maskuoti silpnas klases. Macro precision, recall ir F1 padaro klasiu vertinima simetriska: pirma vertina kiekviena klase, tada agreguoja. Kadangi OpenImages atrinkime klasiu kiekiai gali buti nelygus, macro pasirinkimas gynime yra metodiskai teisingas ir lengvai argumentuojamas.
+
+## 9.5. Kodel saugomas geriausias modelis pagal val_loss?
+
+### 30s atsakymas
+Nes train loss gali gereti net persimokant, o val_loss geriau parodo generalizacija i nematytus duomenis.
+
+### 2 min atsakymas
+Validation rinkinys yra arciau realaus scenarijaus nei train, nes modelis jo tiesiogiai nemokomas. Del to val_loss yra patikimesnis signalas modelio kokybei. Isaugodamas checkpointa su maziausiu val_loss uzfiksuoju geriausia generalizacijos taska.
+
+### 5 min atsakymas
+Modelio atrankos kriterijus turi buti nepriklausomas nuo tiesioginio mokymo optimizavimo. Train loss sumazeja beveik visada, nes optimizeris butent ji minimizuoja. Tuo tarpu val_loss leidzia aptikti momenta, kada modelis pradeda persimokyti. Sis checkpointinimo principas yra standartine praktika ir tiesiogiai mazina rizika, kad i testa nueis pernelyg prisitaikes modelis.
+
+## 9.6. Kodel naudojamas scheduleris ReduceLROnPlateau?
+
+### 30s atsakymas
+Kai validacijos nuostoliai nustoja gereti, scheduleris sumazina learning rate ir padeda modeliui toliau tobulinti svorius smulkesniais zingsniais.
+
+### 2 min atsakymas
+Pradzioje didesnis LR leidzia greitai mokytis, bet veliau gali trukdyti stabiliai konverguoti. `ReduceLROnPlateau` stebi val_loss ir, jei progresas sustoja, automatiskai mazina LR. Taip mokymas tampa stabilesnis ir daznai pasiekia geresni minimuma.
+
+### 5 min atsakymas
+Optimization dinamikoje daznai yra dvi fazes: greitas nusileidimas ir smulkus pritaikymas. Fiksuotas LR ne visada tinka abiem fazems. `ReduceLROnPlateau` realizuoja adaptuota strategija: kol val_loss gereja, LR nekeicia, kai val_loss stagnuoja - mazina LR pagal `factor` po `patience` epochu. Tai ypac naudinga transfer learning scenarijuje, kur mokoma tik galva ir konvergencija buna gana greita, bet paskutiniai pagerinimai reikalauja mazesnio zingsnio.
+
+## 9.7. Kodel `torch.no_grad()` validacijoje ir teste?
+
+### 30s atsakymas
+Nes validacijoje/teste nereikia gradientu. Tai taupo atminti ir pagreitina skaiciavimus.
+
+### 2 min atsakymas
+Gradientai reikalingi tik train fazei `backward()` zingsnyje. Vertinimo metu gradientu nenaudoju, todel `torch.no_grad()` isjungia ju kaupima. Del to sumazeja atminties naudojimas ir inferencija vyksta greiciau.
+
+### 5 min atsakymas
+Autograd mechanizmas seka operaciju grafika, kad veliau butu galima skaiciuoti gradientus. Jei vertinimo metu grafikas vis tiek butu sekamas, be reikalo augtu atminties sanaudos ir letetu vykdymas. `torch.no_grad()` yra tiesiogine signalizacija frameworkui, kad siam bloke gradientai nereikalingi. Praktiskai tai yra standartas visoms evaluation kilpoms.
+
+## 9.8. Ka darytum toliau, jei reiketu pagerinti rezultata?
+
+### 30s atsakymas
+Bandyciau subalansuoti klases, padidinti duomenu kieki ir testuoti dalini backbone atitirpinima.
+
+### 2 min atsakymas
+Pirmiausia tvarkyciau duomenis: daugiau pavyzdziu silpnesnems klasems ir geresne val/test kokybe. Tada testuociau hiperparametrus: LR, batch size, epochas, augmentacijos stipruma. Jei reiketu daugiau kokybes, atitirpinciau paskutinius ResNet blokus ir daryciau dalini fine-tuning.
+
+### 5 min atsakymas
+Tobulinima daryciau etapais, kad butu aisku kas duoda nauda. 1) Duomenu lygis: patikra del triuksmo, klasiu disbalanso ir papildomas surinkimas. 2) Treniravimo lygis: schedulerio parametrai, regularizacija, loss variantai su class weights jei reikia. 3) Modelio lygis: dalinis backbone atitirpinimas su mazu LR. 4) Vertinimo lygis: kryzminis validavimas arba keli random seed paleidimai stabilumui. Toks planas metodiskas ir lengvai paaiskinamas gynime.
+
